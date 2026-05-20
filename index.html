@@ -3,27 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jogo da Memória dos Super Personagens</title>
-    <!-- Importação das fontes Montserrat -->
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>NTE - O Designer Instrucional</title>
+    <!-- Importação segura da fonte Montserrat -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Script de Confetes para celebração visual -->
+    <!-- Biblioteca segura de confetes para comemoração instantânea -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         body {
             font-family: 'Montserrat', sans-serif;
-            background: radial-gradient(circle, #0f172a 0%, #020617 100%);
+            background-color: #ffffff; /* Fundo totalmente branco ao redor */
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
             min-height: 100vh;
             overflow-x: hidden;
         }
 
-        /* Efeito de perspectiva 3D para virar as cartas de forma profissional */
+        /* Efeito de Perspectiva 3D para virar o card */
         .card-perspective {
-            perspective: 1000px;
+            perspective: 1500px;
         }
 
         .card-inner {
-            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
             transform-style: preserve-3d;
         }
 
@@ -36,423 +42,262 @@
             -webkit-backface-visibility: hidden;
             position: absolute;
             inset: 0;
+            height: 100%;
+            width: 100%;
         }
 
         .card-back {
             transform: rotateY(180deg);
         }
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-8px); }
+        /* CORREÇÃO CRÍTICA DE CLIQUES EM ROTAÇÃO 3D:
+          Garante que a face oculta não bloqueie nem intersete os cliques da face ativa.
+        */
+        .card-inner:not(.flipped) .card-back {
+            pointer-events: none;
+            visibility: hidden;
+        }
+        
+        .card-inner.flipped .card-front {
+            pointer-events: none;
+            visibility: hidden;
         }
 
-        .animate-float {
-            animation: float 3s ease-in-out infinite;
+        /* Card Decorativo das Competências com hover dinâmico */
+        .info-pill {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid #f1f5f9;
+        }
+        .info-pill:hover {
+            transform: translateX(6px);
+            border-color: #f39200;
+            background-color: #fffbeb;
+            box-shadow: 0 4px 12px rgba(243, 146, 0, 0.05);
+        }
+
+        /* Botões de Opção do Quiz */
+        .quiz-option {
+            transition: all 0.2s ease;
+        }
+        .quiz-option:hover {
+            transform: translateY(-2px);
+            border-color: #f39200;
+            background-color: #fffbeb;
+        }
+        .quiz-option:active {
+            transform: scale(0.98);
         }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center p-4">
+<body class="p-4 md:p-6 bg-white">
 
-    <!-- Painel de Placar e Informações -->
-    <div class="max-w-4xl w-full flex flex-col items-center gap-6 z-10">
-        
-        <!-- Cabeçalho Principal -->
-        <header class="text-center space-y-2 mt-4">
-            <h1 class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-amber-300 uppercase tracking-tighter drop-shadow-lg">
-                Super Memória
-            </h1>
-            <p class="text-slate-400 text-xs md:text-sm font-semibold max-w-md mx-auto leading-relaxed">
-                Ache as duplas de personagens! Duplas comuns valem <span class="text-emerald-400 font-extrabold">10 pts</span>. <br>
-                A dupla do <span class="text-yellow-400 font-extrabold">Coringa (Joker) 🃏</span> vale incríveis <span class="text-yellow-400 font-extrabold">100 pts</span>!
-            </p>
-        </header>
-
-        <!-- HUD: Placar, Jogadas e Som -->
-        <div class="flex gap-4 w-full max-w-md">
-            <!-- Pontuação -->
-            <div class="flex-1 bg-slate-900/80 border border-slate-700/50 rounded-2xl p-4 text-center backdrop-blur-md shadow-lg">
-                <span class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Pontuação</span>
-                <span id="score-display" class="text-4xl font-black text-emerald-400 transition-all">0</span>
-            </div>
-            <!-- Jogadas / Tentativas -->
-            <div class="flex-1 bg-slate-900/80 border border-slate-700/50 rounded-2xl p-4 text-center backdrop-blur-md shadow-lg">
-                <span class="block text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Tentativas</span>
-                <span id="turns-display" class="text-4xl font-black text-orange-400">0</span>
-            </div>
-        </div>
-
-        <!-- Área de Alertas e Dicas Dinâmicas -->
-        <div id="alert-box" class="hidden w-full max-w-md py-3 px-4 rounded-xl text-center font-bold text-sm shadow-md transition-all duration-300">
-            <!-- Mensagem dinâmica via JS -->
-        </div>
-
-        <!-- Grade de Cartas (4 Colunas x 3 Linhas no Desktop) -->
-        <div id="game-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-3 md:gap-4 w-full max-w-2xl px-2 my-4">
-            <!-- As cartas são injetadas de forma dinâmica no JS -->
-        </div>
-
-        <!-- Botão de Reiniciar -->
-        <button onclick="resetGame()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 px-8 rounded-2xl text-xs uppercase tracking-widest transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-xl shadow-indigo-900/30">
-            Reiniciar Partida 🔄
-        </button>
-
-    </div>
-
-    <!-- Modal Especial: Revelação do Coringa (100 Pontos) -->
-    <div id="joker-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md hidden flex items-center justify-center p-6 z-50">
-        <div class="bg-slate-900 border-2 border-yellow-400 rounded-[2rem] p-8 max-w-sm w-full text-center shadow-[0_0_50px_rgba(234,179,8,0.3)] animate-float">
-            <div class="text-7xl mb-4">🃏</div>
-            <h2 class="text-2xl font-black text-yellow-400 mb-2 uppercase tracking-tight">CORINGA DESCOBERTO!</h2>
-            <p class="text-slate-300 text-sm mb-6 leading-relaxed">Você encontrou a dupla secreta e faturou uma recompensa colossal!</p>
-            <div class="bg-slate-950 rounded-xl py-3 px-6 mb-6 inline-block border border-yellow-500/20">
-                <span class="text-3xl font-black text-yellow-400">+100 PONTOS</span>
-            </div>
-            <button onclick="closeJokerModal()" class="w-full bg-gradient-to-r from-yellow-500 to-amber-500 text-slate-900 py-3 rounded-xl font-black uppercase tracking-wider hover:brightness-110 active:scale-95 transition-all">
-                Continuar Jogando
-            </button>
-        </div>
-    </div>
-
-    <!-- Tela de Vitória Final -->
-    <div id="win-screen" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md hidden flex items-center justify-center p-6 z-40">
-        <div class="bg-slate-900 border-2 border-indigo-500/30 rounded-[2.5rem] p-8 md:p-12 max-w-md w-full text-center shadow-2xl relative overflow-hidden">
-            <div class="text-7xl mb-6 animate-bounce">🏆</div>
-            <h2 class="text-3xl font-black text-white mb-2 uppercase tracking-tight">Vitória Absoluta!</h2>
-            <p class="text-slate-400 mb-8 font-medium">Você concluiu o circuito de memória e encontrou todos os super personagens!</p>
+    <!-- Card de Apresentação com Giro 3D -->
+    <div class="card-perspective max-w-2xl w-full h-[620px] md:h-[580px]">
+        <div id="card-inner" class="card-inner w-full h-full relative">
             
-            <div class="bg-slate-950 rounded-2xl p-6 mb-8 flex justify-around border border-slate-800">
-                <div>
-                    <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Pontos Finais</p>
-                    <p id="final-score" class="text-3xl font-black text-emerald-400">0</p>
+            <!-- LADO FRENTE: O QUE FAZ O DI -->
+            <div class="card-front bg-gradient-to-br from-white via-blue-50/10 to-slate-50 rounded-[2rem] border border-slate-150 p-6 md:p-10 flex flex-col justify-between shadow-md">
+                <!-- Detalhes de iluminação suave no fundo para profundidade visual -->
+                <div class="absolute -top-12 -right-12 w-48 h-48 bg-blue-600/5 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -bottom-16 -left-16 w-56 h-56 bg-[#f39200]/5 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="space-y-6 z-10 relative">
+                    <!-- Título Principal -->
+                    <div class="space-y-1">
+                        <h2 class="text-2xl md:text-3.5xl font-black text-[#004587] leading-none uppercase tracking-tight">
+                            O que faz um
+                        </h2>
+                        <h2 class="text-xl md:text-2.5xl font-bold text-[#f39200] leading-none uppercase tracking-tight">
+                            Designer Instrucional?
+                        </h2>
+                    </div>
+
+                    <!-- Descrição Principal -->
+                    <p class="text-slate-600 text-xs md:text-sm leading-relaxed text-justify">
+                        O <strong>Designer Instrucional (DI)</strong> é o arquiteto da aprendizagem. Ele atua no planejamento, na estruturação pedagógica e na transformação de conteúdos técnicos em trajetórias de aprendizagem dinâmicas, claras e engajadoras dentro do ambiente virtual (Moodle).
+                    </p>
+
+                    <!-- Pilares de Atuação Reconfigurados com Ícones Vetoriais Puros (SVG) -->
+                    <div class="space-y-3 pt-2">
+                        <!-- Pilar 1: Análise -->
+                        <div class="info-pill bg-white p-3.5 rounded-2xl flex items-start gap-4">
+                            <div class="w-9 h-9 rounded-xl bg-blue-50 text-[#004587] flex items-center justify-center font-black text-sm shrink-0 border border-blue-100">
+                                <svg class="w-4.5 h-4.5 text-[#004587]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <circle cx="11" cy="11" r="6" />
+                                    <path d="M21 21l-4.35-4.35" />
+                                </svg>
+                            </div>
+                            <div class="space-y-0.5">
+                                <strong class="text-xs text-[#004587] uppercase font-black tracking-wider block">Análise</strong>
+                                <p class="text-[11px] text-slate-500 leading-normal font-medium">Estudo focado nas necessidades reais de aprendizagem e no perfil do aluno.</p>
+                            </div>
+                        </div>
+
+                        <!-- Pilar 2: Desenho -->
+                        <div class="info-pill bg-white p-3.5 rounded-2xl flex items-start gap-4">
+                            <div class="w-9 h-9 rounded-xl bg-orange-50 text-[#f39200] flex items-center justify-center font-black text-sm shrink-0 border border-orange-100">
+                                <svg class="w-4.5 h-4.5 text-[#f39200]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path d="M12 20h9" />
+                                    <path d="M16.5 3.5l4 4L7 21H3v-4L16.5 3.5z" />
+                                </svg>
+                            </div>
+                            <div class="space-y-0.5">
+                                <strong class="text-xs text-[#f39200] uppercase font-black tracking-wider block">Desenho</strong>
+                                <p class="text-[11px] text-slate-500 leading-normal font-medium">Estruturação de metodologias ativas, roteiros e fluxo cognitivo lógico da aula.</p>
+                            </div>
+                        </div>
+
+                        <!-- Pilar 3: Proposta -->
+                        <div class="info-pill bg-white p-3.5 rounded-2xl flex items-start gap-4">
+                            <div class="w-9 h-9 rounded-xl bg-blue-50 text-[#004587] flex items-center justify-center font-black text-sm shrink-0 border border-blue-100">
+                                <svg class="w-4.5 h-4.5 text-[#004587]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                    <path d="M12 2s-3.5 4.5-3.5 8.5C8.5 13.5 10 15 12 15s3.5-1.5 3.5-4.5C15.5 6.5 12 2 12 2z" />
+                                    <path d="M9 15c-1.5 0-3 1.5-3 3v2h12v-2c0-1.5-1.5-3-3-3" />
+                                </svg>
+                            </div>
+                            <div class="space-y-0.5">
+                                <strong class="text-xs text-[#004587] uppercase font-black tracking-wider block">Produção</strong>
+                                <p class="text-[11px] text-slate-500 leading-normal font-medium">Criação de recursos interativos, mídias integradas e garantia de coerência pedagógica.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="w-px bg-slate-800"></div>
-                <div>
-                    <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Tentativas</p>
-                    <p id="final-turns" class="text-3xl font-black text-orange-400">0</p>
+
+                <!-- Botão de Giro para o Verso -->
+                <div class="z-10 relative flex justify-end pt-4 border-t border-slate-100">
+                    <button onclick="flipCard()" class="flex items-center gap-2 bg-[#004587] hover:bg-blue-800 text-white text-xs font-bold uppercase tracking-wider py-3 px-5 rounded-xl shadow-md transition-all">
+                        Desafio NTE
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375M12 21h3.75M4.5 19.5v-3.375M12 3h3.75" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 4.5l15 15M21 4.5L4.5 21" />
+                        </svg>
+                    </button>
                 </div>
             </div>
 
-            <button onclick="resetGame()" class="w-full bg-gradient-to-r from-emerald-500 to-indigo-500 text-white py-4 rounded-xl font-black uppercase tracking-wider shadow-lg hover:brightness-110 active:scale-95 transition-all">
-                Jogar Novamente
-            </button>
+            <!-- LADO VERSO: PERGUNTA CURIOSA (QUIZ INTERATIVO) -->
+            <div class="card-back bg-gradient-to-br from-white via-orange-50/10 to-slate-50 rounded-[2rem] border border-slate-150 p-6 md:p-10 flex flex-col justify-between shadow-md">
+                <!-- Detalhes de iluminação suave no fundo para o verso -->
+                <div class="absolute -top-12 -left-12 w-48 h-48 bg-orange-300/10 rounded-full blur-3xl pointer-events-none"></div>
+                <div class="absolute -bottom-16 -right-16 w-56 h-56 bg-blue-400/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                <div class="space-y-6 z-10 relative" id="quiz-block">
+                    <!-- Título do Verso -->
+                    <div class="space-y-1">
+                        <span class="text-[10px] font-black text-[#f39200] uppercase tracking-widest block">Quem é Quem?</span>
+                        <h2 class="text-xl md:text-2xl font-black text-[#004587] leading-none uppercase tracking-tight">
+                            Você sabe quem é o
+                        </h2>
+                        <h2 class="text-lg md:text-xl font-bold text-[#f39200] leading-none uppercase tracking-tight">
+                            Designer Instrucional do Senac/CE?
+                        </h2>
+                    </div>
+
+                    <!-- Grade de Opções de Resposta (Qualquer uma que clicar funcionará como CORRETA!) -->
+                    <div class="grid grid-cols-1 gap-3 pt-2">
+                        <button onclick="handleQuizAnswer('Paulo Rebouças')" class="quiz-option w-full text-left p-3.5 border-2 border-slate-200 bg-white text-slate-700 text-xs md:text-sm font-semibold rounded-2xl flex items-center gap-3 focus:outline-none">
+                            <span class="w-6 h-6 rounded-lg bg-blue-50 text-[#004587] font-black flex items-center justify-center text-xs">A</span>
+                            <span>Paulo Rebouças</span>
+                        </button>
+                        <button onclick="handleQuizAnswer('Paulo Henrique')" class="quiz-option w-full text-left p-3.5 border-2 border-slate-200 bg-white text-slate-700 text-xs md:text-sm font-semibold rounded-2xl flex items-center gap-3 focus:outline-none">
+                            <span class="w-6 h-6 rounded-lg bg-blue-50 text-[#004587] font-black flex items-center justify-center text-xs">B</span>
+                            <span>Paulo Henrique</span>
+                        </button>
+                        <button onclick="handleQuizAnswer('Paulin')" class="quiz-option w-full text-left p-3.5 border-2 border-slate-200 bg-white text-slate-700 text-xs md:text-sm font-semibold rounded-2xl flex items-center gap-3 focus:outline-none">
+                            <span class="w-6 h-6 rounded-lg bg-blue-50 text-[#004587] font-black flex items-center justify-center text-xs">C</span>
+                            <span>Paulin</span>
+                        </button>
+                        <button onclick="handleQuizAnswer('Paulo Henrique')" class="quiz-option w-full text-left p-3.5 border-2 border-slate-200 bg-white text-slate-700 text-xs md:text-sm font-semibold rounded-2xl flex items-center gap-3 focus:outline-none">
+                            <span class="w-6 h-6 rounded-lg bg-blue-50 text-[#004587] font-black flex items-center justify-center text-xs">D</span>
+                            <span>Paulo Henrique</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Painel de Vitória / Sucesso após clicar -->
+                <div class="hidden space-y-4 z-10 relative text-center py-6" id="success-block">
+                    <div class="text-6xl animate-bounce">🏆</div>
+                    <h3 class="text-2xl font-black text-emerald-600 uppercase">Certa Resposta!</h3>
+                    <p class="text-slate-600 text-xs md:text-sm font-semibold max-w-sm mx-auto">
+                        Excelente! Não importa qual botão você escolheu: todas as respostas estão corretas, porque o nosso grande mestre é o mesmo!
+                    </p>
+                    <div class="bg-blue-50 border border-blue-150 p-4 rounded-2xl max-w-xs mx-auto">
+                        <span class="text-xs font-bold text-[#004587] block">Parabéns ao respondente!</span>
+                        <span class="text-[10px] text-slate-400 font-medium uppercase mt-0.5">Você domina as mídias do NTE!</span>
+                    </div>
+                </div>
+
+                <!-- Botão de Voltar para a Frente -->
+                <div class="z-10 relative flex justify-between items-center pt-4 border-t border-slate-100">
+                    <button onclick="flipCard()" class="flex items-center gap-2 border-2 border-slate-300 text-slate-600 hover:bg-slate-50 text-xs font-bold uppercase tracking-wider py-2.5 px-4 rounded-xl transition-all">
+                        ← Ver Definição
+                    </button>
+                    <span class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">NTE Senac</span>
+                </div>
+            </div>
+
         </div>
     </div>
 
     <script>
-        // Banco de Dados de Personagens (Ícones e Cores Fortes que não se repetem)
-        const characters = [
-            {
-                name: "Rocket",
-                colorClass: "bg-gradient-to-br from-indigo-500 to-blue-700 border-indigo-400",
-                icon: `<svg class="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>`,
-                isJoker: false
-            },
-            {
-                name: "Lion",
-                colorClass: "bg-gradient-to-br from-amber-500 to-red-600 border-amber-400",
-                icon: `<svg class="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>`,
-                isJoker: false
-            },
-            {
-                name: "Robot",
-                colorClass: "bg-gradient-to-br from-cyan-400 to-blue-600 border-cyan-300",
-                icon: `<svg class="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v5H9V9z"/></svg>`,
-                isJoker: false
-            },
-            {
-                name: "Unicorn",
-                colorClass: "bg-gradient-to-br from-pink-500 to-purple-700 border-pink-400",
-                icon: `<svg class="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>`,
-                isJoker: false
-            },
-            {
-                name: "Dinosaur",
-                colorClass: "bg-gradient-to-br from-emerald-400 to-teal-700 border-emerald-300",
-                icon: `<svg class="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l-.707-.707M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`,
-                isJoker: false
-            },
-            {
-                name: "Joker",
-                colorClass: "bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 border-yellow-300 shadow-[0_0_15px_rgba(234,179,8,0.4)]",
-                icon: `<svg class="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`,
-                isJoker: true
-            }
-        ];
-
-        // Duplica o banco de dados para formar os 6 pares perfeitos (12 cartas no total)
-        let deck = [...characters, ...characters];
-
-        let state = {
-            score: 0,
-            turns: 0,
-            flippedCards: [],
-            matchedCount: 0
-        };
-
-        // Sintetizador de Áudio Nativo para efeitos sonoros profissionais e divertidos
-        const playSound = (type) => {
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                
-                if (type === 'match') {
-                    // Chime ascendente alegre
-                    const osc1 = ctx.createOscillator();
-                    const osc2 = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc1.type = 'sine';
-                    osc2.type = 'sine';
-                    osc1.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
-                    osc2.frequency.setValueAtTime(659.25, ctx.currentTime + 0.1); // E5
-                    gain.gain.setValueAtTime(0.1, ctx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
-                    osc1.connect(gain);
-                    osc2.connect(gain);
-                    gain.connect(ctx.destination);
-                    osc1.start();
-                    osc2.start();
-                    osc1.stop(ctx.currentTime + 0.4);
-                    osc2.stop(ctx.currentTime + 0.4);
-                } else if (type === 'joker') {
-                    // Efeito de Arpeggio Retro / Jackpot
-                    const notes = [523.25, 659.25, 783.99, 1046.50];
-                    notes.forEach((freq, idx) => {
-                        const osc = ctx.createOscillator();
-                        const gain = ctx.createGain();
-                        osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.1);
-                        gain.gain.setValueAtTime(0.12, ctx.currentTime + idx * 0.1);
-                        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + idx * 0.1 + 0.35);
-                        osc.connect(gain);
-                        gain.connect(ctx.destination);
-                        osc.start(ctx.currentTime + idx * 0.1);
-                        osc.stop(ctx.currentTime + idx * 0.1 + 0.35);
-                    });
-                } else if (type === 'fail') {
-                    // Som curto de erro
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(180, ctx.currentTime);
-                    osc.frequency.linearRampToValueAtTime(100, ctx.currentTime + 0.2);
-                    gain.gain.setValueAtTime(0.1, ctx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-                    osc.connect(gain);
-                    gain.connect(ctx.destination);
-                    osc.start();
-                    osc.stop(ctx.currentTime + 0.2);
-                } else if (type === 'victory') {
-                    // Fanfarra de vitória triunfante
-                    const notes = [523.25, 523.25, 523.25, 783.99, 1046.50];
-                    const times = [0, 0.15, 0.3, 0.45, 0.6];
-                    notes.forEach((freq, idx) => {
-                        const osc = ctx.createOscillator();
-                        const gain = ctx.createGain();
-                        osc.type = 'sine';
-                        osc.frequency.setValueAtTime(freq, ctx.currentTime + times[idx]);
-                        gain.gain.setValueAtTime(0.1, ctx.currentTime + times[idx]);
-                        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + times[idx] + 0.4);
-                        osc.connect(gain);
-                        gain.connect(ctx.destination);
-                        osc.start(ctx.currentTime + times[idx]);
-                        osc.stop(ctx.currentTime + times[idx] + 0.4);
-                    });
-                }
-            } catch (e) {
-                console.warn("AudioContext bloqueado ou não suportado.", e);
-            }
-        };
-
-        // Algoritmo Fisher-Yates de Embaralhamento Seguro
-        function shuffle(array) {
-            let currentIndex = array.length, randomIndex;
-            while (currentIndex != 0) {
-                randomIndex = Math.floor(Math.random() * currentIndex);
-                currentIndex--;
-                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
-            }
-            return array;
-        }
-
-        // Constrói a Grade de Cartas dinamicamente
-        function buildGrid() {
-            const gridContainer = document.getElementById("game-grid");
-            gridContainer.innerHTML = "";
-
-            shuffle(deck);
-
-            deck.forEach((card, index) => {
-                const cardEl = document.createElement("div");
-                cardEl.className = "card-perspective h-28 sm:h-36 w-full cursor-pointer";
-                cardEl.setAttribute("data-name", card.name);
-                cardEl.setAttribute("data-index", index);
-                cardEl.onclick = () => flipCard(cardEl, card);
-
-                cardEl.innerHTML = `
-                    <div class="card-inner w-full h-full relative rounded-2xl shadow-lg border-2 border-slate-700/50">
-                        <!-- Verso da Carta (Escondido) -->
-                        <div class="card-front bg-slate-800 rounded-2xl flex items-center justify-center text-indigo-400 border border-indigo-500/10 hover:bg-slate-750 transition-colors">
-                            <span class="text-3xl font-black">?</span>
-                        </div>
-                        <!-- Frente da Carta (Revelado com cores fortes de alta saturação) -->
-                        <div class="card-back ${card.colorClass} rounded-2xl flex flex-col items-center justify-center border-2">
-                            ${card.icon}
-                            ${card.isJoker ? '<span class="text-[9px] font-black text-white uppercase tracking-widest mt-1">Coringa</span>' : ''}
-                        </div>
-                    </div>
-                `;
-
-                gridContainer.appendChild(cardEl);
-            });
-        }
-
-        // Lógica de Giro e Regras de Negócio
-        function flipCard(element, card) {
-            // Impede cliques se já combinado, se for a mesma carta ou se já houver duas cartas giradas em processamento
-            if (element.classList.contains("matched") || state.flippedCards.length >= 2 || state.flippedCards.includes(element)) {
-                return;
-            }
-
-            const inner = element.querySelector(".card-inner");
-            inner.classList.add("flipped");
-            state.flippedCards.push(element);
-
-            if (state.flippedCards.length === 2) {
-                state.turns++;
-                document.getElementById("turns-display").innerText = state.turns;
-                checkMatch();
-            }
-        }
-
-        // Verificação de Par Encontrado
-        function checkMatch() {
-            const [card1, card2] = state.flippedCards;
-            const name1 = card1.getAttribute("data-name");
-            const name2 = card2.getAttribute("data-name");
-
-            if (name1 === name2) {
-                // Sucesso! Par correspondente encontrado
-                card1.classList.add("matched");
-                card2.classList.add("matched");
-
-                const isJoker = name1 === "Joker";
-                const pointsGained = isJoker ? 100 : 10;
-                
-                state.score += pointsGained;
-                state.matchedCount += 2;
-
-                document.getElementById("score-display").innerText = state.score;
-
-                if (isJoker) {
-                    playSound('joker');
-                    triggerJokerConfetti();
-                    showJokerModal();
-                } else {
-                    playSound('match');
-                    showAlert(`Par Encontrado! +10 Pontos! ✨`, "bg-emerald-500 text-white border-emerald-400");
-                    triggerMatchConfetti();
-                }
-
-                state.flippedCards = [];
-
-                if (state.matchedCount === deck.length) {
-                    setTimeout(endGame, 1200);
-                }
-            } else {
-                // Erro: Desvira as cartas após um breve intervalo sem punições
-                playSound('fail');
+        // Função para virar o card
+        function flipCard() {
+            const inner = document.getElementById('card-inner');
+            
+            // Se o card já foi respondido e está no painel de sucesso, reseta ao virar de volta
+            if (inner.classList.contains('flipped')) {
                 setTimeout(() => {
-                    card1.querySelector(".card-inner").classList.remove("flipped");
-                    card2.querySelector(".card-inner").classList.remove("flipped");
-                    state.flippedCards = [];
-                }, 1000);
+                    document.getElementById('quiz-block').classList.remove('hidden');
+                    document.getElementById('success-block').classList.add('hidden');
+                }, 300);
             }
+            
+            inner.classList.toggle('flipped');
         }
 
-        // Notificação Dinâmica de Ações do Tabuleiro
-        function showAlert(msg, classes) {
-            const alertBox = document.getElementById("alert-box");
-            alertBox.innerText = msg;
-            alertBox.className = `${classes} w-full max-w-md py-3 px-4 rounded-xl text-center font-bold text-sm shadow-md transition-all duration-300 animate-pulse`;
-            alertBox.classList.remove("hidden");
+        // Função de resposta do quiz (Garante sucesso em qualquer alternativa!)
+        function handleQuizAnswer(selectedName) {
+            const quizBlock = document.getElementById('quiz-block');
+            const successBlock = document.getElementById('success-block');
 
-            setTimeout(() => {
-                alertBox.classList.add("hidden");
-            }, 2500);
+            // Esconde a pergunta e opções com efeito rápido
+            quizBlock.classList.add('hidden');
+            
+            // Mostra o feedback alegre de parabéns
+            successBlock.classList.remove('hidden');
+
+            // Dispara chuva de confetes festiva
+            triggerConfetti();
         }
 
-        // Modais do Coringa
-        function showJokerModal() {
-            document.getElementById("joker-modal").classList.remove("hidden");
-        }
+        // Efeito visual de confetes usando a biblioteca Canvas-Confetti
+        function triggerConfetti() {
+            const duration = 2.5 * 1000;
+            const animationEnd = Date.now() + duration;
+            const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 100 };
 
-        function closeJokerModal() {
-            document.getElementById("joker-modal").classList.add("hidden");
-        }
+            function randomInRange(min, max) {
+                return Math.random() * (max - min) + min;
+            }
 
-        // Celebrações Visuais (Confetes)
-        function triggerJokerConfetti() {
-            confetti({
-                particleCount: 150,
-                spread: 80,
-                origin: { y: 0.6 },
-                colors: ['#fbbf24', '#f472b6', '#ef4444']
-            });
-        }
-
-        function triggerMatchConfetti() {
-            confetti({
-                particleCount: 40,
-                angle: 60,
-                spread: 55,
-                origin: { x: 0 }
-            });
-            confetti({
-                particleCount: 40,
-                angle: 120,
-                spread: 55,
-                origin: { x: 1 }
-            });
-        }
-
-        // Fim da Partida
-        function endGame() {
-            playSound('victory');
-            document.getElementById("final-score").innerText = state.score;
-            document.getElementById("final-turns").innerText = state.turns;
-            document.getElementById("win-screen").classList.remove("hidden");
-
-            const end = Date.now() + (3 * 1000);
             const interval = setInterval(function() {
-                if (Date.now() > end) return clearInterval(interval);
-                confetti({
-                    startVelocity: 30,
-                    spread: 360,
-                    ticks: 60,
-                    origin: { x: Math.random(), y: Math.random() - 0.2 }
-                });
-            }, 200);
+                const timeLeft = animationEnd - Date.now();
+
+                if (timeLeft <= 0) {
+                    return clearInterval(interval);
+                }
+
+                const particleCount = 50 * (timeLeft / duration);
+                confetti(Object.assign({}, defaults, { 
+                    particleCount, 
+                    origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } 
+                }));
+                confetti(Object.assign({}, defaults, { 
+                    particleCount, 
+                    origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } 
+                }));
+            }, 250);
         }
-
-        // Reinicia todo o ambiente
-        function resetGame() {
-            state.score = 0;
-            state.turns = 0;
-            state.flippedCards = [];
-            state.matchedCount = 0;
-
-            document.getElementById("score-display").innerText = "0";
-            document.getElementById("turns-display").innerText = "0";
-            document.getElementById("win-screen").classList.add("hidden");
-            document.getElementById("joker-modal").classList.add("hidden");
-
-            buildGrid();
-        }
-
-        // Início Automático
-        window.onload = () => {
-            buildGrid();
-        };
     </script>
 </body>
 </html>
