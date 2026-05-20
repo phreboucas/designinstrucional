@@ -193,7 +193,7 @@
                         </h2>
                     </div>
 
-                    <!-- Grade de Opções de Resposta (Qualquer uma que clicar funcionará como CORRETA!) -->
+                    <!-- Grade de Opções de Resposta -->
                     <div class="grid grid-cols-1 gap-3 pt-2">
                         <button onclick="handleQuizAnswer('Paulo Rebouças')" class="quiz-option w-full text-left p-3.5 border-2 border-slate-200 bg-white text-slate-700 text-xs md:text-sm font-semibold rounded-2xl flex items-center gap-3 focus:outline-none">
                             <span class="w-6 h-6 rounded-lg bg-blue-50 text-[#004587] font-black flex items-center justify-center text-xs">A</span>
@@ -207,20 +207,23 @@
                             <span class="w-6 h-6 rounded-lg bg-blue-50 text-[#004587] font-black flex items-center justify-center text-xs">C</span>
                             <span>Paulin</span>
                         </button>
-                        <button onclick="handleQuizAnswer('Paulo Henrique')" class="quiz-option w-full text-left p-3.5 border-2 border-slate-200 bg-white text-slate-700 text-xs md:text-sm font-semibold rounded-2xl flex items-center gap-3 focus:outline-none">
+                        <button onclick="handleQuizAnswer('PH')" class="quiz-option w-full text-left p-3.5 border-2 border-slate-200 bg-white text-slate-700 text-xs md:text-sm font-semibold rounded-2xl flex items-center gap-3 focus:outline-none">
                             <span class="w-6 h-6 rounded-lg bg-blue-50 text-[#004587] font-black flex items-center justify-center text-xs">D</span>
-                            <span>Paulo Henrique</span>
+                            <span>PH</span>
                         </button>
                     </div>
                 </div>
 
-                <!-- Painel de Vitória / Sucesso após clicar -->
-                <div class="hidden space-y-4 z-10 relative text-center py-6" id="success-block">
+                <!-- Painel de Vitória / Sucesso após clicar (Injetado via JS) -->
+                <div class="hidden space-y-4 z-10 relative text-center py-4" id="success-block">
                     <div class="text-6xl animate-bounce">🏆</div>
                     <h3 class="text-2xl font-black text-emerald-600 uppercase">Certa Resposta!</h3>
-                    <p class="text-slate-600 text-xs md:text-sm font-semibold max-w-sm mx-auto">
-                        Excelente! Não importa qual botão você escolheu: todas as respostas estão corretas, porque o nosso grande mestre é o mesmo!
+                    
+                    <!-- Caixa de Feedback customizada -->
+                    <p class="text-slate-700 text-sm md:text-base font-semibold max-w-sm mx-auto leading-relaxed" id="custom-feedback">
+                        <!-- Será inserido de forma dinâmica -->
                     </p>
+
                     <div class="bg-blue-50 border border-blue-150 p-4 rounded-2xl max-w-xs mx-auto">
                         <span class="text-xs font-bold text-[#004587] block">Parabéns ao respondente!</span>
                         <span class="text-[10px] text-slate-400 font-medium uppercase mt-0.5">Você domina as mídias do NTE!</span>
@@ -255,10 +258,26 @@
             inner.classList.toggle('flipped');
         }
 
-        // Função de resposta do quiz (Garante sucesso em qualquer alternativa!)
-        function handleQuizAnswer(selectedName) {
+        // Função de resposta do quiz (Garante sucesso com comentários personalizados!)
+        function handleQuizAnswer(selectedOption) {
             const quizBlock = document.getElementById('quiz-block');
             const successBlock = document.getElementById('success-block');
+            const feedbackText = document.getElementById('custom-feedback');
+
+            // Definição das respostas personalizadas para cada botão
+            let msg = "";
+            if (selectedOption === 'Paulo Rebouças') {
+                msg = "Certíssimo! <strong>Paulo Rebouças</strong> é o nome oficial do nosso arquiteto de aprendizagem e mestre do Design Instrucional no NTE!";
+            } else if (selectedOption === 'Paulo Henrique') {
+                msg = "Exato! <strong>Paulo Henrique</strong> é o prenome dele. Mostrou que você conhece muito bem o nosso especialista!";
+            } else if (selectedOption === 'Paulin') {
+                msg = "Muito bem! <strong>Paulin</strong> é o apelido afetuoso que os colegas de equipe e parceiros do NTE usam. Sinta-se em casa!";
+            } else if (selectedOption === 'PH') {
+                msg = "Excelente! <strong>PH</strong> é a sigla prática e carinhosa com a qual assinamos os projetos de sucesso dele no dia a dia!";
+            }
+
+            // Insere o comentário dinamicamente no painel de sucesso
+            feedbackText.innerHTML = msg;
 
             // Esconde a pergunta e opções com efeito rápido
             quizBlock.classList.add('hidden');
